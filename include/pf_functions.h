@@ -39,7 +39,7 @@ void handle_gyro(bool is_initialised, std::vector<Particle>* particles, const vo
 void handle_gps(bool is_initialised, std::vector<Particle>* particles, std::vector<double>* weights, const void* z, const std::vector<double> &std, void* args) {
     auto meas = (GPSMeasurement*)z;
 
-    auto previous_meas = (GPSMeasurement*)args;
+    // auto previous_meas = (GPSMeasurement*)args;
     
     if (is_initialised) {
         const auto gps_var = std[0] * std[0];
@@ -54,11 +54,11 @@ void handle_gps(bool is_initialised, std::vector<Particle>* particles, std::vect
             double weight_no_exp = 0.0;
             double dx = meas->x - (*state)(0);
             double dy = meas->y - (*state)(1);
-            double h_dx = meas->x - previous_meas->x;
-            double h_dy = meas->y - previous_meas->y;
-            double heading = atan2(h_dy, h_dx);
-            double d_heading = wrapAngle(heading - (*state)(2));
-            weight_no_exp += dx * dx / gps_var + dy * dy / gps_var + d_heading * d_heading / heading_var; // dx^T * R^-1 * dx
+            // double h_dx = meas->x - previous_meas->x;
+            // double h_dy = meas->y - previous_meas->y;
+            // double heading = atan2(h_dy, h_dx);
+            // double d_heading = wrapAngle(heading - (*state)(2));
+            weight_no_exp += dx * dx / gps_var + dy * dy / gps_var; /*+ d_heading * d_heading / heading_var*/ // dx^T * R^-1 * dx
             (*particles)[i].set_weight((*particles)[i].get_weight() * exp(-0.5*weight_no_exp));
             sum_w += (*particles)[i].get_weight();
         }

@@ -144,11 +144,11 @@ void Simulation::update()
                 {
                     std::vector<LidarMeasurement> lidar_measurements = m_lidar_sensor.generateLidarMeasurements(m_car.getVehicleState().x,m_car.getVehicleState().y, m_car.getVehicleState().psi, m_beacons);
                     // m_kalman_filter.handleLidarMeasurements(lidar_measurements, m_beacons);
-                    // spf.update(&lidar_measurements, {dub::LIDAR_RANGE_STD, dub::LIDAR_THETA_STD}, handle_lidar, &m_beacons);
-                    // if (spf.get_is_initialised()) {
-                    //     spf.resample();
-                    // }
-                    // m_lidar_measurement_history = lidar_measurements;
+                    spf.update(&lidar_measurements, {dub::LIDAR_RANGE_STD, dub::LIDAR_THETA_STD}, handle_lidar, &m_beacons);
+                    if (spf.get_is_initialised()) {
+                        spf.resample();
+                    }
+                    m_lidar_measurement_history = lidar_measurements;
                     m_time_till_lidar_measurement += 1.0/m_sim_parameters.lidar_update_rate;
                 }
                 m_time_till_lidar_measurement -= m_sim_parameters.time_step;
