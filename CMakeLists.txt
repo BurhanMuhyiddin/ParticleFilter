@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 11)
 
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 
+include_directories( include )
+
 set(SRC_CPP
     src/main.cpp
     src/display.cpp
@@ -13,6 +15,7 @@ set(SRC_CPP
     src/simulation.cpp
     src/utils.cpp
     src/kalmanfilter.cpp
+    src/standard_particle_filter.cpp
 )
 
 add_executable(${PROJECT_NAME}

@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <vector>
+#include <fstream>
 
 #include "kalmanfilter.h"
 #include "display.h"
@@ -10,6 +11,7 @@
 #include "beacons.h"
 #include "sensors.h"
 
+#include "standard_particle_filter.h"
 
 struct SimulationParams
 {
@@ -59,6 +61,7 @@ class Simulation
     public:
 
         Simulation();
+        ~Simulation();
         void reset();
         void reset(SimulationParams sim_params);
         void update();
@@ -71,6 +74,11 @@ class Simulation
         void togglePauseSimulation();
         bool isPaused();
         bool isRunning();
+
+        StandardParticleFilter spf;
+        std::ofstream log_file;
+
+        GPSMeasurement previousGps;
 
     private:
 

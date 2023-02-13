@@ -1,7 +1,16 @@
-
 #include "simulation.h"
-#include "utils.h"
 
+#include "pf_functions.h"
+
+namespace dub{
+    constexpr double ACCEL_STD = 1.0;
+    constexpr double GYRO_STD = 0.01/180.0 * M_PI;
+    constexpr double INIT_VEL_STD = 10.0;
+    constexpr double INIT_PSI_STD = 45.0/180.0 * M_PI;
+    constexpr double GPS_POS_STD = 3.0;
+    constexpr double LIDAR_RANGE_STD = 3.0;
+    constexpr double LIDAR_THETA_STD = 0.02;
+}
 
 Simulation::Simulation()
 : m_sim_parameters(SimulationParams()),
@@ -12,8 +21,17 @@ Simulation::Simulation()
     m_time(0.0),
     m_time_till_gyro_measurement(0.0),
     m_time_till_gps_measurement(0.0),
-    m_time_till_lidar_measurement(0.0)
-{}
+    m_time_till_lidar_measurement(0.0),
+    spf(500), log_file("/media/burhan/D/all_tasks/AKFSF-Simulation-CPP/data/result.csv")
+{
+    log_file << "gt_x,gt_y,gt_psi,gt_v,f_x,f_y,f_psi,f_v,e_x,e_y,e_psi,e_v\n";
+}
+
+Simulation::~Simulation() {
+    if (log_file.is_open()) {
+        log_file.close();
+    }
+}
 
 void Simulation::reset()
 {
@@ -26,7 +44,7 @@ void Simulation::reset()
     m_is_running = true;
     m_is_paused = false;
     
-    m_kalman_filter.reset();
+    // m_kalman_filter.reset();
 
     m_gps_sensor.reset();
     m_gps_sensor.setGPSNoiseStd(m_sim_parameters.gps_position_noise_std);
@@ -86,7 +104,8 @@ void Simulation::update()
                 if (m_time_till_gyro_measurement <= 0)
                 {
                     GyroMeasurement meas = m_gyro_sensor.generateGyroMeasurement(m_car.getVehicleState().yaw_rate);
-                    m_kalman_filter.predictionStep(meas, m_sim_parameters.time_step);
+                    // m_kalman_filter.predictionStep(meas, m_sim_parameters.time_step);
+                    spf.predict(&meas, m_sim_parameters.time_step, {0.3,0.3, dub::GYRO_STD, 0.3}, handle_gyro, nullptr);
                     m_time_till_gyro_measurement += 1.0/m_sim_parameters.gyro_update_rate;
                 }
                 m_time_till_gyro_measurement -= m_sim_parameters.time_step;
@@ -98,7 +117,20 @@ void Simulation::update()
                 if (m_time_till_gps_measurement <= 0)
                 {
                     GPSMeasurement gps_meas = m_gps_sensor.generateGPSMeasurement(m_car.getVehicleState().x,m_car.getVehicleState().y);
-                    m_kalman_filter.handleGPSMeasurement(gps_meas);
+                    if (!spf.get_is_initialised()) {
+                        Eigen::VectorXd initial_state = Eigen::VectorXd::Zero(4);
+                        initial_state(0) = gps_meas.x;
+                        initial_state(1) = gps_meas.y;
+                        initial_state(2) = m_sim_parameters.car_initial_psi;
+                        initial_state(3) = m_sim_parameters.car_initial_velocity;
+                        previousGps = gps_meas;
+                        spf.init(initial_state, {dub::GPS_POS_STD, dub::GPS_POS_STD, dub::INIT_PSI_STD, dub::INIT_VEL_STD});
+                    } else {
+                        // m_kalman_filter.handleGPSMeasurement(gps_meas);
+                        spf.update(&gps_meas, {dub::GPS_POS_STD, 1.5}, handle_gps, (void*)(&previousGps));
+                        previousGps = gps_meas;
+                        spf.resample();
+                    }
                     m_gps_measurement_history.push_back(gps_meas);
                     m_time_till_gps_measurement += 1.0/m_sim_parameters.gps_update_rate;
                 }
@@ -111,23 +143,40 @@ void Simulation::update()
                 if (m_time_till_lidar_measurement <= 0)
                 {
                     std::vector<LidarMeasurement> lidar_measurements = m_lidar_sensor.generateLidarMeasurements(m_car.getVehicleState().x,m_car.getVehicleState().y, m_car.getVehicleState().psi, m_beacons);
-                    m_kalman_filter.handleLidarMeasurements(lidar_measurements, m_beacons);
-                    m_lidar_measurement_history = lidar_measurements;
+                    // m_kalman_filter.handleLidarMeasurements(lidar_measurements, m_beacons);
+                    // spf.update(&lidar_measurements, {dub::LIDAR_RANGE_STD, dub::LIDAR_THETA_STD}, handle_lidar, &m_beacons);
+                    // if (spf.get_is_initialised()) {
+                    //     spf.resample();
+                    // }
+                    // m_lidar_measurement_history = lidar_measurements;
                     m_time_till_lidar_measurement += 1.0/m_sim_parameters.lidar_update_rate;
                 }
                 m_time_till_lidar_measurement -= m_sim_parameters.time_step;
             }
 
             // Save Filter History and Calculate Stats
-            if (m_kalman_filter.isInitialised())
-            {
+            // if (spf.get_is_initialised())
+            // {
+                // VehicleState vehicle_state = m_car.getVehicleState();
+            //     VehicleState filter_state = m_kalman_filter.getVehicleState();
+                // m_filter_position_history.push_back(Vector2(filter_state.x, filter_state.y));
+            //     m_filter_error_x_position_history.push_back(filter_state.x - vehicle_state.x);
+            //     m_filter_error_y_position_history.push_back(filter_state.y - vehicle_state.y);
+            //     m_filter_error_heading_history.push_back(wrapAngle(filter_state.psi - vehicle_state.psi));
+            //     m_filter_error_velocity_history.push_back(filter_state.V - vehicle_state.V);
+            // }
+            if (spf.get_is_initialised()) {
                 VehicleState vehicle_state = m_car.getVehicleState();
-                VehicleState filter_state = m_kalman_filter.getVehicleState();
-                m_filter_position_history.push_back(Vector2(filter_state.x, filter_state.y));
-                m_filter_error_x_position_history.push_back(filter_state.x - vehicle_state.x);
-                m_filter_error_y_position_history.push_back(filter_state.y - vehicle_state.y);
-                m_filter_error_heading_history.push_back(wrapAngle(filter_state.psi - vehicle_state.psi));
-                m_filter_error_velocity_history.push_back(filter_state.V - vehicle_state.V);
+                auto filter_state = spf.integrate(integrand_mean, nullptr);
+                m_filter_position_history.push_back(Vector2(filter_state(0), filter_state(1)));
+                std::vector<double> err{vehicle_state.x - filter_state(0),
+                                        vehicle_state.y - filter_state(1),
+                                        wrapAngle(vehicle_state.psi - filter_state(2)),
+                                        vehicle_state.V - filter_state(3)};
+
+                log_file << vehicle_state.x << "," << vehicle_state.y << "," << vehicle_state.psi << "," << vehicle_state.V << ","
+                          << filter_state(0) << "," << filter_state(1) << "," << filter_state(2) << "," << filter_state(3) << ","
+                          << err[0] << "," << err[1] << "," << err[2] << "," << err[3] << "\n"; 
             }
 
             // Update Time
@@ -152,28 +201,28 @@ void Simulation::render(Display& disp)
     disp.setDrawColour(100,0,0);
     disp.drawLines(m_filter_position_history);
 
-    if (m_kalman_filter.isInitialised())
-    {
-        VehicleState filter_state = m_kalman_filter.getVehicleState();
-        Eigen::Matrix2d cov = m_kalman_filter.getVehicleStatePositionCovariance();
+    // if (m_kalman_filter.isInitialised())
+    // {
+    //     VehicleState filter_state = m_kalman_filter.getVehicleState();
+    //     Eigen::Matrix2d cov = m_kalman_filter.getVehicleStatePositionCovariance();
 
-        double x = filter_state.x;
-        double y = filter_state.y;
-        double sigma_xx = cov(0,0);
-        double sigma_yy = cov(1,1);
-        double sigma_xy = cov(0,1);
+    //     double x = filter_state.x;
+    //     double y = filter_state.y;
+    //     double sigma_xx = cov(0,0);
+    //     double sigma_yy = cov(1,1);
+    //     double sigma_xy = cov(0,1);
 
-        std::vector<Vector2> marker_lines1_world = offsetPoints(marker_lines1, Vector2(x,y));
-        std::vector<Vector2> marker_lines2_world = offsetPoints(marker_lines2, Vector2(x,y));
-        disp.setDrawColour(255,0,0);
-        disp.drawLines(marker_lines1_world);
-        disp.drawLines(marker_lines2_world);
+    //     std::vector<Vector2> marker_lines1_world = offsetPoints(marker_lines1, Vector2(x,y));
+    //     std::vector<Vector2> marker_lines2_world = offsetPoints(marker_lines2, Vector2(x,y));
+    //     disp.setDrawColour(255,0,0);
+    //     disp.drawLines(marker_lines1_world);
+    //     disp.drawLines(marker_lines2_world);
 
-        std::vector<Vector2> cov_world = generateEllipse(x,y,sigma_xx,sigma_yy,sigma_xy);
-        disp.setDrawColour(255,0,0);
-        disp.drawLines(cov_world);
+    //     std::vector<Vector2> cov_world = generateEllipse(x,y,sigma_xx,sigma_yy,sigma_xy);
+    //     disp.setDrawColour(255,0,0);
+    //     disp.drawLines(cov_world);
 
-    }
+    // }
 
     // Render GPS Measurements
     std::vector<std::vector<Vector2>> m_gps_marker = {{{0.5,0.5},{-0.5,-0.5}}, {{0.5,-0.5},{-0.5,0.5}}};
@@ -230,15 +279,15 @@ void Simulation::render(Display& disp)
     disp.drawText_MainFont(xpos,Vector2(x_offset,y_offset+stride*3),1.0,{255,255,255});
     disp.drawText_MainFont(ypos,Vector2(x_offset,y_offset+stride*4),1.0,{255,255,255});
 
-    std::string kf_velocity_string = string_format("    Velocity: %0.2f m/s",m_kalman_filter.getVehicleState().V);
-    std::string kf_yaw_string = string_format("   Heading: %0.2f deg",m_kalman_filter.getVehicleState().psi * 180.0/M_PI);
-    std::string kf_xpos = string_format("X Position: %0.2f m",m_kalman_filter.getVehicleState().x);
-    std::string kf_ypos = string_format("Y Position: %0.2f m",m_kalman_filter.getVehicleState().y);
-    disp.drawText_MainFont("Filter State",Vector2(x_offset,y_offset+stride*6),1.0,{255,255,255});
-    disp.drawText_MainFont(kf_velocity_string,Vector2(x_offset,y_offset+stride*7),1.0,{255,255,255});
-    disp.drawText_MainFont(kf_yaw_string,Vector2(x_offset,y_offset+stride*8),1.0,{255,255,255});
-    disp.drawText_MainFont(kf_xpos,Vector2(x_offset,y_offset+stride*9),1.0,{255,255,255});
-    disp.drawText_MainFont(kf_ypos,Vector2(x_offset,y_offset+stride*10),1.0,{255,255,255});
+    // std::string kf_velocity_string = string_format("    Velocity: %0.2f m/s",m_kalman_filter.getVehicleState().V);
+    // std::string kf_yaw_string = string_format("   Heading: %0.2f deg",m_kalman_filter.getVehicleState().psi * 180.0/M_PI);
+    // std::string kf_xpos = string_format("X Position: %0.2f m",m_kalman_filter.getVehicleState().x);
+    // std::string kf_ypos = string_format("Y Position: %0.2f m",m_kalman_filter.getVehicleState().y);
+    // disp.drawText_MainFont("Filter State",Vector2(x_offset,y_offset+stride*6),1.0,{255,255,255});
+    // disp.drawText_MainFont(kf_velocity_string,Vector2(x_offset,y_offset+stride*7),1.0,{255,255,255});
+    // disp.drawText_MainFont(kf_yaw_string,Vector2(x_offset,y_offset+stride*8),1.0,{255,255,255});
+    // disp.drawText_MainFont(kf_xpos,Vector2(x_offset,y_offset+stride*9),1.0,{255,255,255});
+    // disp.drawText_MainFont(kf_ypos,Vector2(x_offset,y_offset+stride*10),1.0,{255,255,255});
 
     // Keyboard Input
     x_offset = 10;

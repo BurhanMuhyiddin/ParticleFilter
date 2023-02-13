@@ -48,7 +48,7 @@ int main( int argc, char* args[] )
     if (!mDisplay.createRenderer("AKFSF Simulations", SCREEN_WIDTH, SCREEN_HEIGHT)){return false;}
 
     // Main Simulation Loop
-    mSimulation.reset(loadSimulation1Parameters());
+    mSimulation.reset(loadSimulation8Parameters());
     //mSimulation.setTimeMultiplier(10);
     bool mRunning = true;
     while(mRunning)
