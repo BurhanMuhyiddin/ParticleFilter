@@ -2,9 +2,38 @@
 #define PF_FUNCTIONS_H_
 
 #include "particle_filter.h"
-// #include "utils.h"
-// #include "sensors.h"
+#include "utils.h"
+#include "sensors.h"
 // #include "beacons.h"
+
+void init_pf(std::vector<Particle>* particles, const Eigen::VectorXd &initial_state, const std::vector<double> &std, void* args) {
+
+    // get number of particles
+    auto num_particles = particles->size();
+
+    // create vector of normal distributions with mean of state and std of std
+    std::vector<std::normal_distribution<double>> state_rngs(initial_state.rows());
+    for (size_t i = 0; i < initial_state.rows(); ++i) {
+        state_rngs[i] = std::normal_distribution<double>(initial_state[i], std[i]);
+    }
+
+    // set initial value of particle states and their ids and weights
+    double init_weight = 1.0 / (1.0 * num_particles);
+    for (size_t i = 0; i < num_particles; ++i) {
+        VectorXd temp(initial_state.rows());
+        for (size_t j = 0; j < initial_state.rows(); ++j) {
+            if (j == 2) {
+                temp(j) = wrapAngle(state_rngs[j](ParticleFilter::rng));
+            } else {
+                temp(j) = state_rngs[j](ParticleFilter::rng);
+            }
+            
+        }
+        (*particles)[i].set_id(i);
+        (*particles)[i].set_state(temp);
+        (*particles)[i].set_weight(init_weight);
+    }
+}
 
 void handle_gyro(bool is_initialised, std::vector<Particle>* particles, const void* u, const double dt, const std::vector<double> &std, void* args) {
     auto inp = (GyroMeasurement*)u;

@@ -124,7 +124,7 @@ void Simulation::update()
                         initial_state(2) = m_sim_parameters.car_initial_psi;
                         initial_state(3) = m_sim_parameters.car_initial_velocity;
                         previousGps = gps_meas;
-                        spf.init(initial_state, {dub::GPS_POS_STD, dub::GPS_POS_STD, dub::INIT_PSI_STD, dub::INIT_VEL_STD});
+                        spf.init(initial_state, {dub::GPS_POS_STD, dub::GPS_POS_STD, dub::INIT_PSI_STD, dub::INIT_VEL_STD}, init_pf, nullptr);
                     } else {
                         // m_kalman_filter.handleGPSMeasurement(gps_meas);
                         spf.update(&gps_meas, {dub::GPS_POS_STD, 1.5}, handle_gps, (void*)(&previousGps));

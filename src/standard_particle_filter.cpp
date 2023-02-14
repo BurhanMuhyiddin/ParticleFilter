@@ -1,41 +1,14 @@
 #include "standard_particle_filter.h"
 #include <iostream>
-#include "utils.h"
 
 StandardParticleFilter::StandardParticleFilter(const unsigned long int num_particles) :
                                             ParticleFilter(num_particles) {
     set_is_initialised(false);
 }
 
-void StandardParticleFilter::init(const VectorXd &state, const std::vector<double> &std) {
-    // get reference to particle array
-    auto particles = get_particles();
-
-    // get number of particles
-    auto num_particles = get_num_particles();
-
-    // create vector of normal distributions with mean of state and std of std
-    std::vector<std::normal_distribution<double>> state_rngs(state.rows());
-    for (size_t i = 0; i < state.rows(); ++i) {
-        state_rngs[i] = std::normal_distribution<double>(state[i], std[i]);
-    }
-
-    // set initial value of particle states and their ids and weights
-    double init_weight = 1.0 / (1.0 * num_particles);
-    for (size_t i = 0; i < num_particles; ++i) {
-        VectorXd temp(state.rows());
-        for (size_t j = 0; j < state.rows(); ++j) {
-            if (j == 2) {
-                temp(j) = wrapAngle(state_rngs[j](rng));
-            } else {
-                temp(j) = state_rngs[j](rng);
-            }
-            
-        }
-        (*particles)[i].set_id(i);
-        (*particles)[i].set_state(temp);
-        (*particles)[i].set_weight(init_weight);
-    }
+void StandardParticleFilter::init(const VectorXd &initial_state, const std::vector<double> &std, const ParticleFilter::KernelInit &kernel, void* args) {
+    // call the kernel function with the initial states and std
+    kernel(get_particles(), initial_state, std, args);
     set_is_initialised(true);
 }
 

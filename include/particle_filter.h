@@ -28,6 +28,7 @@ private:
 
 class ParticleFilter {
 public:
+    typedef std::function<void(std::vector<Particle>* particles, const Eigen::VectorXd &initial_state, const std::vector<double> &std, void* args)> KernelInit;
     typedef std::function<void(bool is_initialised, std::vector<Particle>* particles, const void* u, const double dt, const std::vector<double> &std, void* args)> KernelPredict;
     typedef std::function<void(bool is_initialised, std::vector<Particle>* particles, std::vector<double>* weights, const void* z, const std::vector<double> &std, void* args)> KernelUpdate;
     typedef std::function<Eigen::VectorXd(std::vector<Particle>* particles, void* args)> KernelIntegrate;
@@ -50,7 +51,7 @@ public:
     bool get_is_initialised() const { return is_initialised; }
     void set_is_initialised(const bool is_initialised) { this->is_initialised = is_initialised; }
 
-    virtual void init(const VectorXd &state, const std::vector<double> &std) = 0;
+    virtual void init(const VectorXd &initial_state, const std::vector<double> &std, const ParticleFilter::KernelInit &kernel, void* args) = 0;
     virtual void predict(const void* u, const double dt, const std::vector<double> &std, const ParticleFilter::KernelPredict &kernel, void* args) = 0;
     virtual void update(const void* z, const std::vector<double> &std, const ParticleFilter::KernelUpdate &kernel, void* args) = 0;
     virtual Eigen::VectorXd integrate(const ParticleFilter::KernelIntegrate &kernel, void* args) = 0;
