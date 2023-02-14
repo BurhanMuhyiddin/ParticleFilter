@@ -14,7 +14,7 @@ set(SRC_CPP
     src/sensors.cpp
     src/simulation.cpp
     src/utils.cpp
-    src/standard_particle_filter.cpp
+    include/particle_filter/standard_particle_filter.cpp
 )
 
 add_executable(${PROJECT_NAME}

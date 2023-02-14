@@ -1,7 +1,7 @@
 #ifndef PF_FUNCTIONS_H_
 #define PF_FUNCTIONS_H_
 
-#include "particle_filter.h"
+#include "particle_filter/particle_filter.h"
 #include "utils.h"
 #include "sensors.h"
 // #include "beacons.h"

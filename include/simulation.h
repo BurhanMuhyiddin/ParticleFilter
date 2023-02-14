@@ -10,7 +10,7 @@
 #include "beacons.h"
 #include "sensors.h"
 
-#include "standard_particle_filter.h"
+#include "particle_filter/standard_particle_filter.h"
 
 struct SimulationParams
 {
