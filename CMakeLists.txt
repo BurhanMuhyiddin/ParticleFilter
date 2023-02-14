@@ -14,7 +14,6 @@ set(SRC_CPP
     src/sensors.cpp
     src/simulation.cpp
     src/utils.cpp
-    src/kalmanfilter.cpp
     src/standard_particle_filter.cpp
 )
 
