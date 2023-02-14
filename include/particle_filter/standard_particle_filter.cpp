@@ -20,6 +20,10 @@ void StandardParticleFilter::predict(const void* u, const double dt, const std::
 void StandardParticleFilter::update(const void* z, const std::vector<double> &std, const ParticleFilter::KernelUpdate &kernel, void* args) {
     // call the kernel function with the observations z
     kernel(get_is_initialised(), get_particles(), get_weights(), z, std, args);
+
+    if (get_is_initialised() && (getESS() < get_resampling_threshold())) {
+        resample();
+    }
 }
 
 Eigen::VectorXd StandardParticleFilter::integrate(const ParticleFilter::KernelIntegrate &kernel, void* args) {

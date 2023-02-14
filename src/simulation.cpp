@@ -129,7 +129,6 @@ void Simulation::update()
                         // m_kalman_filter.handleGPSMeasurement(gps_meas);
                         spf.update(&gps_meas, {dub::GPS_POS_STD, 1.5}, handle_gps, (void*)(&previousGps));
                         previousGps = gps_meas;
-                        spf.resample();
                     }
                     m_gps_measurement_history.push_back(gps_meas);
                     m_time_till_gps_measurement += 1.0/m_sim_parameters.gps_update_rate;
@@ -145,9 +144,6 @@ void Simulation::update()
                     std::vector<LidarMeasurement> lidar_measurements = m_lidar_sensor.generateLidarMeasurements(m_car.getVehicleState().x,m_car.getVehicleState().y, m_car.getVehicleState().psi, m_beacons);
                     // m_kalman_filter.handleLidarMeasurements(lidar_measurements, m_beacons);
                     spf.update(&lidar_measurements, {dub::LIDAR_RANGE_STD, dub::LIDAR_THETA_STD}, handle_lidar, &m_beacons);
-                    if (spf.get_is_initialised()) {
-                        spf.resample();
-                    }
                     m_lidar_measurement_history = lidar_measurements;
                     m_time_till_lidar_measurement += 1.0/m_sim_parameters.lidar_update_rate;
                 }

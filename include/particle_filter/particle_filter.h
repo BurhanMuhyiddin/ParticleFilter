@@ -37,6 +37,8 @@ public:
         this->num_particles = num_particles;
         particles.resize(num_particles);
         weights.resize(num_particles);
+
+        resampling_threshold = 0.5 * num_particles;
     }
 
     unsigned long int get_num_particles() const { return num_particles; }
@@ -50,6 +52,9 @@ public:
 
     bool get_is_initialised() const { return is_initialised; }
     void set_is_initialised(const bool is_initialised) { this->is_initialised = is_initialised; }
+
+    double get_resampling_threshold() const { return resampling_threshold; }
+    void set_resampling_threshold(const double resampling_threshold) { this->resampling_threshold = resampling_threshold; }
 
     virtual void init(const VectorXd &initial_state, const std::vector<double> &std, const ParticleFilter::KernelInit &kernel, void* args) = 0;
     virtual void predict(const void* u, const double dt, const std::vector<double> &std, const ParticleFilter::KernelPredict &kernel, void* args) = 0;
@@ -66,6 +71,23 @@ public:
         weights.resize(num_particles);
     }
 
+    double getESS() {
+        long double sum = 0.0;
+        long double sumsq = 0.0;
+
+        auto particles = *get_particles();
+
+        for (size_t i = 0; i < get_num_particles(); ++i)
+            sum += particles[i].get_weight();
+
+        for (size_t i = 0; i < get_num_particles(); ++i) {
+            auto log_weight = log(particles[i].get_weight());
+            sumsq += expl(2.0*(log_weight));
+        }
+
+        return expl(-log(sumsq) + 2.0*log(sum));
+    }
+
 public:
     static std::default_random_engine rng;
 private:
@@ -73,6 +95,7 @@ private:
     std::vector<Particle> particles;
     std::vector<double> weights;
     bool is_initialised;
+    double resampling_threshold;
 };
 
 #endif
